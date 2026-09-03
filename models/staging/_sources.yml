@@ -1,0 +1,78 @@
+version: 2
+
+sources:
+  - name: shopify_legacy
+    database: "{{ env_var('RAW_DATABASE', 'RAW') }}"
+    schema: "{{ env_var('SHOPIFY_LEGACY_SCHEMA', 'SHOPIFY_LEGACY') }}"
+    description: Legacy connector tables retained during a phased migration.
+    tables:
+      - name: store_a_orders
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_a_refunds
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_b_orders
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_b_refunds
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+
+  - name: shopify_replacement_store_a
+    database: "{{ env_var('RAW_DATABASE', 'RAW') }}"
+    schema: "{{ env_var('SHOPIFY_REPLACEMENT_STORE_A_SCHEMA', 'SHOPIFY_REPLACEMENT_STORE_A') }}"
+    description: Replacement connector tables for store_a.
+    tables:
+      - name: orders
+      - name: order_refunds
+
+  - name: shopify_replacement_store_b
+    database: "{{ env_var('RAW_DATABASE', 'RAW') }}"
+    schema: "{{ env_var('SHOPIFY_REPLACEMENT_STORE_B_SCHEMA', 'SHOPIFY_REPLACEMENT_STORE_B') }}"
+    description: Replacement connector tables for store_b.
+    tables:
+      - name: orders
+      - name: order_refunds
+
+  - name: tiktok_shop
+    database: "{{ env_var('RAW_DATABASE', 'RAW') }}"
+    schema: "{{ env_var('TIKTOK_SHOP_SCHEMA', 'TIKTOK_SHOP') }}"
+    description: TikTok Shop connector tables for multiple stores.
+    tables:
+      - name: store_a_orders
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_a_returns
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_a_statements
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_a_statement_transactions
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_a_statement_transaction_rows
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_a_statement_fee_tax_rows
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_b_orders
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_b_returns
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_b_statements
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_b_statement_transactions
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_b_statement_transaction_rows
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"
+      - name: store_b_statement_fee_tax_rows
+        config:
+          loaded_at_field: "to_timestamp(source_batch_runtime_ms / 1000)"

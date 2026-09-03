@@ -36,6 +36,13 @@ Staging models come in pairs, one per connector, feeding the same intermediate l
 That is a connector migration in progress: downstream models never learn there are two
 physical sources, and stores move across one at a time.
 
+## Snapshots
+
+`snapshots/` tracks change over time with dbt snapshots, so current-state logic no longer
+depends on the append-only staging table keeping every version forever. History stays in
+the snapshot layer and never reaches the marts: reporting reads `where dbt_valid_to is
+null`. See [docs/snapshots.md](docs/snapshots.md) for why, and how to move a model across.
+
 ## Before you run it
 
 1. Replace the store mappings macro with your own stores and source tables. The original

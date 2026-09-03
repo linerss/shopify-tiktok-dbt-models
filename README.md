@@ -1,65 +1,62 @@
-# Shopify and TikTok Shop dbt reference models
+# Shopify and TikTok Shop dbt models
 
-Reference dbt models for loading Shopify and TikTok Shop into a warehouse without
-double counting, losing refunds, or tripping over duplicate line items.
+The dbt models I use to load Shopify and TikTok Shop into a warehouse without double
+counting orders, losing refunds, or tripping over duplicate line items.
 
-These came out of production work across a multi-store portfolio. They are shared as
-reference, not as an installable package: the sources are yours, so you will need to
-point the staging models at your own raw tables.
+These are the working models, genericized for release. The SQL is the SQL that runs.
 
-## What is actually hard about this
+## The three things that actually bite
 
-Three problems show up in almost every Shopify warehouse, and this repo is mostly about them.
+**Staging is append-only and that is on purpose.** The connector resends snapshots for
+old orders, so staging holds more than one row per line item by design. A uniqueness test
+there fails forever. Current-state uniqueness belongs in the intermediate layer, ordered
+by business update time and then load time.
 
-**The same line item arrives twice in different formats.** Connectors resend snapshots for
-old orders, and a large numeric id can serialize as an integer-like string in one batch and
-a decimal or scientific-notation string in the next. Deduplicate before you normalize and
-the two representations look like different keys. `macros/normalize_numeric_id.sql` fixes
-the representation; the intermediate layer enforces one current row per key.
+**A connector can change how it serializes an id.** One of ours started sending line item
+ids as decimal strings partway through, so the same line item existed under two different
+string keys either side of that date. The staging models cast ids to a single
+representation before anything builds a key from them. If your order counts drift and
+nothing else explains it, check the format of your ids across the change window.
 
-**Append-only staging looks broken but is not.** Staging preserves what the connector
-delivered and when. A uniqueness test there will fail forever. Enforce current-state
-uniqueness downstream instead, with `row_number()` ordered by business update time and then
-connector load time.
-
-**Shipping refunds get counted twice.** Shopify can represent the same refunded shipping in
-a refund-shipping row and again in an order adjustment. Pick one canonical representation
-per connector and test for it, rather than passing both downstream.
+**Shipping refunds can be counted twice.** The same refunded shipping can appear in a
+refund shipping row and again in an order adjustment. Pick one canonical representation
+and test for it rather than passing both downstream.
 
 ## Layout
 
 ```
-models/staging/       one adapter per connector, both exposing the same typed contract
-models/intermediate/  deduplication, refund logic, statement reconciliation
-models/marts/         TikTok Shop statement fees
-macros/               id normalization and finance helpers
-tests/                id format, uniqueness, and refund shipping tests
-docs/                 modeling notes and the store-by-store migration guide
+models/1_staging/          one adapter per connector, per object
+models/2_intermediate/     deduplication, refund logic, statement transactions
+models/3_analytics/        TikTok Shop fees
+macros/                    store mappings and helpers
+tests/                     id format and uniqueness tests
 ```
 
-Staging models come in `legacy` and `replacement` pairs. That is the connector migration
-pattern: run both connectors in parallel, adapt each to the same contract, union them in
-the intermediate layer, and move one store at a time. `docs/connector_migration.md` has the
-cutover sequence and what to reconcile at each step.
+Staging models come in pairs, one per connector, feeding the same intermediate layer.
+That is a connector migration in progress: downstream models never learn there are two
+physical sources, and stores move across one at a time.
 
-## Using these
+## Before you run it
 
-1. Point `models/staging/_sources.yml` at your raw tables.
-2. Replace `<STORE>` placeholders and the `shopify_migrated_stores` variable with your stores.
-3. Build staging first and check the id format tests pass before going further.
-4. Read `docs/modeling_notes.md`. It explains why each decision is the way it is.
+1. Replace the store mappings macro with your own stores and source tables. The original
+   had a hardcoded list; it is a macro now so you configure it once.
+2. Point the sources at your raw tables.
+3. Build staging first and check the id format tests pass.
 
-Multi-store keys include a store identifier everywhere. Platform ids are not guaranteed
-unique across stores, and that assumption is expensive to unwind later.
+Every multi-store key includes the store. Platform ids are not guaranteed unique across
+stores and that assumption is expensive to unwind later.
 
 ## What is not here
 
-No customer contact data. Email, name, phone and street address are deliberately excluded;
-only country and province codes are carried, because fee and refund analysis does not need
-identity. No sample data, and no client data of any kind.
+No customer contact data. Email, name, phone and street address are removed from every
+select, with a comment where they were. Country and province codes remain, since fee and
+refund analysis needs geography but not identity. No sample data and no client data.
 
-These models have not been run against a public dataset. They came from a working
-warehouse, then were genericized. Validate against your own numbers before trusting them.
+## Honest notes
+
+Snowflake dialect. These have not been executed since genericization, and the sources are
+yours, so treat them as reference rather than an installable package. Validate against
+your own numbers.
 
 ## License
 
